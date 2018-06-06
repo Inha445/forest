@@ -1,0 +1,334 @@
+install.packages("zoo")
+library(zoo)
+
+data<-read.csv("C:/Users/admin/Desktop/tot_df_kj.csv",header=T)
+head(data)
+data[is.na(data)]<-0
+data$year<-as.POSIXlt(data$date)$year+1900
+data$month<-as.POSIXlt(data$date)$mon+1
+data$day<-as.POSIXlt(data$date)$mday
+data$wday<-as.POSIXlt(data$date)$wday
+
+data_list<-list()
+
+
+#----------------------- 휴일변수 더미 생성 -------------------------#
+holiday_r<-cbind(data$month,data$day)
+
+#### 신정 
+data$day_1_1<-apply(holiday_r,1,function(x) if(x[1]==0&&x[2]==1){x[3]<-1}else{x[3]<-0})
+
+#### 삼일절 
+day_3_1<-apply(holiday_r,1,function(x) if(x[1]==2&&x[2]==1){x[3]<-1}else{x[3]<-0})
+
+#### 어린이날 
+day_5_5<-apply(holiday_r,1,function(x) if(x[1]==4&&x[2]==5){x[3]<-1}else{x[3]<-0})
+
+#### 현충일 
+day_6_6<-apply(holiday_r,1,function(x) if(x[1]==5&&x[2]==6){x[3]<-1}else{x[3]<-0})
+
+#### 광복절 
+day_8_15<-apply(holiday_r,1,function(x) if(x[1]==7&&x[2]==15){x[3]<-1}else{x[3]<-0})
+
+#### 개천절
+day_10_3<-apply(holiday_r,1,function(x) if(x[1]==9&&x[2]==3){x[3]<-1}else{x[3]<-0})
+
+#### 크리스마스 
+day_12_25<-apply(holiday_r,1,function(x) if(x[1]==11&&x[2]==25){x[3]<-1}else{x[3]<-0})
+
+
+
+data_list<-list()
+
+for(i in 1:9)
+{data_list[[i]]<-subset(data,area==i)}
+
+mintemp_m<-list()
+for(i in 1:9)
+{
+#------------------------ mintemp 파생변수 생성 ----------------------------#
+mintemp<-zoo(data_list[[i]]$최저기온,as.Date(data_list[[i]][,1]))
+min_lag1<-lag(mintemp,k=-1,na.pad=TRUE)
+min_lag2<-lag(mintemp,k=-2,na.pad=TRUE)
+min_lag7<-lag(mintemp,k=-7,na.pad=TRUE)
+
+mintemp_m[[i]]<-merge(mintemp,min_lag1,min_lag2,min_lag7)
+}
+
+#------------------------ maxtemp 파생변수 생성 ----------------------------#
+maxtemp_m<-list()
+for(i in 1:9){
+maxtemp<-zoo(data_list[[i]]$최고기온,as.Date(data_list[[i]][,1]))
+max_lag1<-lag(maxtemp,k=-1,na.pad=TRUE)
+max_lag2<-lag(maxtemp,k=-2,na.pad=TRUE)
+max_lag7<-lag(maxtemp,k=-7,na.pad=TRUE)
+
+maxtemp_m[[i]]<-merge(maxtemp,max_lag1,max_lag2,max_lag7)
+}
+
+
+#------------------------ 강수 파생변수 생성 ----------------------------#
+
+#### 강수 더미변수 생성 
+rain_d_m<-list()
+for(i in 1:9){
+rain_d<-zoo(data_list[[i]]$일강수량,as.Date(data_list[[i]][,1]))
+rain_d_lag<-lag(rain_d,k=-1,na.pad=TRUE)
+rain_d_lag2<-lag(rain_d,k=-2,na.pad=TRUE)
+rain_d_lag3<-lag(rain_d,k=-3,na.pad=TRUE)
+rain_d_lag4<-lag(rain_d,k=-4,na.pad=TRUE)
+rain_d_lag5<-lag(rain_d,k=-5,na.pad=TRUE)
+rain_d_lag6<-lag(rain_d,k=-6,na.pad=TRUE)
+
+rain_d_m[[i]]<-merge(rain_d,rain_d_lag,rain_d_lag2,rain_d_lag3,rain_d_lag4,rain_d_lag5,rain_d_lag6)
+}
+
+minhumid_m<-list()
+for(i in 1:9)
+{
+  #------------------------ mintemp 파생변수 생성 ----------------------------#
+  minhumid<-zoo(data_list[[i]]$최소상대습도,as.Date(data_list[[i]][,1]))
+  min_lag1<-lag(mintemp,k=-1,na.pad=TRUE)
+  min_lag2<-lag(mintemp,k=-2,na.pad=TRUE)
+  min_lag7<-lag(mintemp,k=-7,na.pad=TRUE)
+  
+  minhumid_m[[i]]<-merge(minhumid,min_lag1,min_lag2,min_lag7)
+}
+
+avehumid_m<-list()
+for(i in 1:9)
+{
+  #------------------------ mintemp 파생변수 생성 ----------------------------#
+  avehumid<-zoo(data_list[[i]]$평균상대습도,as.Date(data_list[[i]][,1]))
+  ave_lag1<-lag(mintemp,k=-1,na.pad=TRUE)
+  ave_lag2<-lag(mintemp,k=-2,na.pad=TRUE)
+  ave_lag7<-lag(mintemp,k=-7,na.pad=TRUE)
+  
+  avehumid_m[[i]]<-merge(avehumid,ave_lag1,ave_lag2,ave_lag7)
+}
+
+join_weather<-list()
+
+i=1
+for(i in 1:9)
+{
+
+
+#### 3일 누적 mintemp
+mintemp_3accu<-apply(mintemp_m[[i]][,c(1:3)],1,sum)
+
+#### 일주일 사이 온도의 변화량
+mintemp_7diff<-apply(mintemp_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+
+
+#### 3일 누적 mintemp
+maxtemp_3accu<-apply(maxtemp_m[[i]][,c(1:3)],1,sum)
+
+#### 일주일 사이 온도의 변화량
+maxtemp_7diff<-apply(mintemp_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+
+#### 3일 누적 rain_d
+rain_3accu<-apply(rain_d_m[[i]][,1:3],1,sum)
+
+#### 5일 누적 rain_d
+rain_5accu<-apply(rain_d_m[[i]][,1:5],1,sum)
+
+#### 7일 누적 rain_d
+rain_7accu<-apply(rain_d_m[[i]],1,sum)
+
+#### 3일 누적 minhumid
+minhumid_3accu<-apply(minhumid_m[[i]][,c(1:3)],1,sum)
+
+#### 일주일 사이 습도 변화량
+minhumid_7diff<-apply(minhumid_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+
+#### 3일 누적 avehumid
+avehumid_3accu<-apply(avehumid_m[[i]][,c(1:3)],1,sum)
+
+#### 일주일 사이 온도의 변화량
+avehumid_7diff<-apply(avehumid_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+
+
+#### 3일 누적 mintemp
+maxtemp_3accu<-apply(maxtemp_m[[i]][,c(1:3)],1,sum)
+
+#### 일주일 사이 온도의 변화량
+maxtemp_7diff<-apply(mintemp_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+
+wt_raw<-zoo(as.Date(data_list[[i]][,1]))
+
+wt_derive<-merge(wt_raw,mintemp_3accu,mintemp_7diff,maxtemp_3accu,maxtemp_7diff
+                      ,rain_3accu,rain_5accu,rain_7accu,minhumid_3accu,minhumid_7diff,
+                      avehumid_3accu,avehumid_7diff)
+
+wt_derive2<-wt_derive[-c(1,2,3,4,5,6,7),]
+wt_derive3<-data.frame(coredata(wt_derive2))
+
+date<-data_list[[i]][,1][-c(1,2,3,4,5,6,7)]
+
+date_frame<-data.frame(date)
+
+join_weather[[i]]<-cbind(date_frame,wt_derive3)
+
+}
+
+library(dplyr)
+data_tot<-list()
+
+for(i in 1:9)
+{data_tot[[i]]<-left_join(data_list[[i]],join_weather[[i]])}
+data_tot[[1]]
+
+
+
+lapply(split(data, data$area), function(x) sum(x$y == 1)/length(x$y))
+
+
+#####분할
+set.seed(0)
+data_2<-data_tot[[2]][-c(1,2,3,4,5,6,7),]
+data_2_1<-subset(data_2,y==1)
+data_2_0<-subset(data_2,y==0)
+tr_wh_1<-sample(1:length(data_2_1[,1]),length(data_2_1[,1])*0.9,replace=F)
+tr_wh_0<-sample(1:length(data_2_0[,1]),length(data_2_0[,1])*0.9,replace=F)
+tr_1<-data_2_1[tr_wh_1,]
+tr_0<-data_2_0[tr_wh_0,]
+test_1<-data_2_1[-tr_wh_1,]
+test_0<-data_2_0[-tr_wh_0,]
+tr<-rbind(tr_0,tr_1)
+table(tr$y)
+test_set<-rbind(test_0,test_1)
+
+#####down sampling
+set.seed(0)
+tr_wh_1<-sample(1:length(data_2_1[,1]),length(data_2_1[,1])*0.9,replace=F)
+tr_wh_0<-sample(1:length(data_2_0[,1]),length(data_2_0[,1])*0.9,replace=F)
+tr_wh_0_down<-sample(tr_wh_0,length(tr_wh_1)*3,replace=F)
+tr_1<-data_2_1[tr_wh_1,]
+tr_0_down<-data_2_0[tr_wh_0_down,]
+test_1<-data_2_1[-tr_wh_1,]
+test_0<-data_2_0[-tr_wh_0,]
+tr_down<-rbind(tr_0_down,tr_1)
+test_set<-rbind(test_0,test_1)
+table(tr_down$y)
+
+
+#####Upsampling
+library(caret)
+set.seed(0)
+data_2<-data_tot[[2]][-c(1,2,3,4,5,6,7),]
+data_2_1<-subset(data_2,y==1)
+data_2_0<-subset(data_2,y==0)
+tr_wh_1<-sample(1:length(data_2_1[,1]),length(data_2_1[,1])*0.9,replace=F)
+tr_wh_0<-sample(1:length(data_2_0[,1]),length(data_2_0[,1])*0.9,replace=F)
+tr_wh_0_down<-sample(tr_wh_0,length(tr_wh_1)*3,replace=F)
+tr_1<-data_2_1[tr_wh_1,]
+tr_0<-data_2_0[tr_wh_0,]
+test_1<-data_2_1[-tr_wh_1,]
+test_0<-data_2_0[-tr_wh_0,]
+tr<-rbind(tr_0,tr_1)
+tr$y<-as.factor(tr$y)
+
+tr_up<-upSample(x=tr[,-c(tr$y)],y=tr$y)
+
+table(tr_up$Class)
+
+
+#####SMOTE
+install.packages("DMwR")
+library(DMwR)
+set.seed(0)
+data_2<-data_tot[[2]][-c(1,2,3,4,5,6,7),]
+data_2_1<-subset(data_2,y==1)
+data_2_0<-subset(data_2,y==0)
+tr_wh_1<-sample(1:length(data_2_1[,1]),length(data_2_1[,1])*0.9,replace=F)
+tr_wh_0<-sample(1:length(data_2_0[,1]),length(data_2_0[,1])*0.9,replace=F)
+tr_1<-data_2_1[tr_wh_1,]
+tr_0<-data_2_0[tr_wh_0,]
+test_1<-data_2_1[-tr_wh_1,]
+test_0<-data_2_0[-tr_wh_0,]
+tr<-rbind(tr_0,tr_1)
+tr$y<-as.factor(tr$y)
+tr_SMOTE<-SMOTE(y~.,data=tr)
+table(tr_SMOTE$y)
+test_set<-rbind(test_0,test_1)
+table(tr_SMOTE$y)
+
+#####ROSE
+install.packages("ROSE")
+library(ROSE)
+
+set.seed(0)
+data_2<-data_tot[[2]][-c(1,2,3,4,5,6,7),]
+data_2_1<-subset(data_2,y==1)
+data_2_0<-subset(data_2,y==0)
+tr_wh_1<-sample(1:length(data_2_1[,1]),length(data_2_1[,1])*0.9,replace=F)
+tr_wh_0<-sample(1:length(data_2_0[,1]),length(data_2_0[,1])*0.9,replace=F)
+tr_wh_0_down<-sample(tr_wh_0,length(tr_wh_1)*3,replace=F)
+tr_1<-data_2_1[tr_wh_1,]
+tr_0<-data_2_0[tr_wh_0,]
+test_1<-data_2_1[-tr_wh_1,]
+test_0<-data_2_0[-tr_wh_0,]
+tr<-rbind(tr_0,tr_1)
+test_set<-rbind(test_0,test_1)
+tr_ROSE<-ROSE(y~.,data=tr)
+head(tr_ROSE)
+table(tr_ROSE$y)
+
+
+###로지스틱
+head(tr)
+
+logis<-glm(factor(y)~month+wday+평균기온+최저기온+최고기온+일강수량+최대순간풍속+최대풍속+평균풍속+최소상대습도+평균상대습도+평균상대습도+mintemp_3accu+maxtemp_3accu+rain_3accu+minhumid_3accu,data=tr,family = binomial(link = logit))
+logis_down<-glm(factor(y)~month+wday+평균기온+최저기온+최고기온+일강수량+최대순간풍속+최대풍속+평균풍속+최소상대습도+평균상대습도+평균상대습도+mintemp_3accu+maxtemp_3accu+rain_3accu+minhumid_3accu,data=tr_down,family = binomial)
+logis_up<-glm(Class~month+wday+평균기온+최저기온+최고기온+일강수량+최대순간풍속+최대풍속+평균풍속+최소상대습도+평균상대습도+평균상대습도+mintemp_3accu+maxtemp_3accu+rain_3accu+minhumid_3accu,data=tr_up,family = binomial(link = logit))
+logis_SMOTE<-glm(y~month+wday+평균기온+최저기온+최고기온+일강수량+최대순간풍속+최대풍속+평균풍속+최소상대습도+평균상대습도+평균상대습도+mintemp_3accu+maxtemp_3accu+rain_3accu+minhumid_3accu,data=tr_SMOTE,family = binomial(link = logit))
+
+
+#logis_ROSE<-glm(y~month+wday+평균기온+최저기온+최고기온+일강수량+최대순간풍속+최대풍속+평균풍속+최소상대습도+평균상대습도+평균상대습도+mintemp_3accu+maxtemp_3accu+rain_3accu+minhumid_3accu,data=tr_ROSE,family = binomial(link = logit))
+
+
+############ROC커브 그리기#######
+install.packages("ROCR")
+library(ROCR)
+
+p<-predict(logis_SMOTE,newdata=test_set,type="response")
+pr<-prediction(p,test_set$y)
+prf<-performance(pr, measure="tpr",x.measure="fpr")
+plot(prf)
+auc<-performance(pr,measure="auc")
+auc<-auc@y.values[[1]]
+auc
+
+
+table(y = test_set$y, yhat = ifelse(p < 0.0110, 0 , 1))
+
+# #---------------------------- 토,일 강수효과 만들기 ---------------------------#
+# 
+# 
+# #### 7일제거
+# rain_d_2<-rain_d[-(1:7)]
+# holiday_rain_r<-cbind(wday_d,coredata(rain_d_2))
+# holiday_rain_sat<-apply(holiday_rain_r,1,function(x) if(x[1]=="saturday"&&x[2]=="1"){x[3]<-1}else{x[3]<-0})
+# holiday_rain_sun<-apply(holiday_rain_r,1,function(x) if(x[1]=="sunday"&&x[2]=="1"){x[3]<-1}else{x[3]<-0})
+# 
+# model_data<-cbind(wt_derive4,wday_d,month_d,day_1_1,day_3_1,day_5_5,day_6_6,day_8_15,
+#                   day_10_3,day_12_25,holiday_rain_sat,holiday_rain_sun)    
+
+
+
+
+
+logis<-glm(y~month+wday+평균기온+최저기온+최고기온+일강수량+최대순간풍속+최대풍속+평균풍속+최소상대습도+평균상대습도+평균상대습도+mintemp_3accu+maxtemp_3accu+rain_3accu+minhumid_3accu,data=tr,family = binomial(link = logit))
+head(tr)
+summary(logis)
+
+p<-predict(logis,newdata=test_set,type="response")
+pr<-prediction(p,test_set$y)
+prf<-performance(pr, measure="tpr",x.measure="fpr")
+plot(prf)
+auc<-performance(pr,measure="auc")
+auc<-auc@y.values[[1]]
+auc
+
+
