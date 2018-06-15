@@ -1,0 +1,140 @@
+data_list <- split(data, data$area)
+
+mintemp_m<-list()
+for(i in 1:9)
+{
+  #------------------------ mintemp 파생변수 생성 ----------------------------#
+  mintemp<-zoo(data_list[[i]]$min_temp,as.Date(data_list[[i]][,1]))
+  min_lag1<-lag(mintemp,k=-1,na.pad=TRUE)
+  min_lag2<-lag(mintemp,k=-2,na.pad=TRUE)
+  min_lag7<-lag(mintemp,k=-7,na.pad=TRUE)
+  
+  mintemp_m[[i]]<-merge(mintemp,min_lag1,min_lag2,min_lag7)
+}
+
+#------------------------ maxtemp 파생변수 생성 ----------------------------#
+maxtemp_m<-list()
+for(i in 1:9){
+  maxtemp<-zoo(data_list[[i]]$max_temp,as.Date(data_list[[i]][,1]))
+  max_lag1<-lag(maxtemp,k=-1,na.pad=TRUE)
+  max_lag2<-lag(maxtemp,k=-2,na.pad=TRUE)
+  max_lag7<-lag(maxtemp,k=-7,na.pad=TRUE)
+  
+  maxtemp_m[[i]]<-merge(maxtemp,max_lag1,max_lag2,max_lag7)
+}
+
+#------------------------ avgtemp 파생변수 생성 ----------------------------#
+avgtemp_m<-list()
+for(i in 1:9){
+  avgtemp<-zoo(data_list[[i]]$avg_temp,as.Date(data_list[[i]][,1]))
+  avg_lag1<-lag(avgtemp,k=-1,na.pad=TRUE)
+  avg_lag2<-lag(avgtemp,k=-2,na.pad=TRUE)
+  avg_lag7<-lag(avgtemp,k=-7,na.pad=TRUE)
+  
+  avgtemp_m[[i]]<-merge(avgtemp,avg_lag1,avg_lag2,avg_lag7)
+}
+
+#------------------------ 강수 파생변수 생성 ----------------------------#
+
+#### 강수 더미변수 생성 
+rain_d_m<-list()
+for(i in 1:9){
+  rain_d<-zoo(data_list[[i]]$rain_day,as.Date(data_list[[i]][,1]))
+  rain_d_lag<-lag(rain_d,k=-1,na.pad=TRUE)
+  rain_d_lag2<-lag(rain_d,k=-2,na.pad=TRUE)
+  rain_d_lag3<-lag(rain_d,k=-3,na.pad=TRUE)
+  rain_d_lag4<-lag(rain_d,k=-4,na.pad=TRUE)
+  rain_d_lag5<-lag(rain_d,k=-5,na.pad=TRUE)
+  rain_d_lag6<-lag(rain_d,k=-6,na.pad=TRUE)
+  
+  rain_d_m[[i]]<-merge(rain_d,rain_d_lag,rain_d_lag2,rain_d_lag3,rain_d_lag4,rain_d_lag5,rain_d_lag6)
+}
+
+minhumid_m<-list()
+for(i in 1:9)
+{
+  #------------------------ mintemp 파생변수 생성 ----------------------------#
+  minhumid<-zoo(data_list[[i]]$min_hum,as.Date(data_list[[i]][,1]))
+  min_hum_lag1<-lag(minhumid,k=-1,na.pad=TRUE)
+  min_hum_lag2<-lag(minhumid,k=-2,na.pad=TRUE)
+  min_hum_lag7<-lag(minhumid,k=-7,na.pad=TRUE)
+  
+  minhumid_m[[i]]<-merge(minhumid,min_hum_lag1,min_hum_lag2,min_hum_lag7)
+}
+
+avehumid_m<-list()
+for(i in 1:9)
+{
+  #------------------------ mintemp 파생변수 생성 ----------------------------#
+  avehumid<-zoo(data_list[[i]]$avg_hum,as.Date(data_list[[i]][,1]))
+  ave_hum_lag1<-lag(avehumid,k=-1,na.pad=TRUE)
+  ave_hum_lag2<-lag(avehumid,k=-2,na.pad=TRUE)
+  ave_hum_lag7<-lag(avehumid,k=-7,na.pad=TRUE)
+  
+  avehumid_m[[i]]<-merge(avehumid,ave_hum_lag1,ave_hum_lag2,ave_hum_lag7)
+}
+
+join_weather<-list()
+
+i=1
+for(i in 1:9)
+{
+  
+  
+  #### 3일 누적 mintemp
+  mintemp_3accu<-apply(mintemp_m[[i]][,c(1:3)],1,sum)
+  
+  #### 일주일 사이 온도의 변화량
+  mintemp_7diff<-apply(mintemp_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+  
+  
+  #### 3일 누적 maxntemp
+  maxtemp_3accu<-apply(maxtemp_m[[i]][,c(1:3)],1,sum)
+  
+  #### 일주일 사이 온도의 변화량
+  maxtemp_7diff<-apply(mintemp_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+  
+  #### 3일 누적 rain_d
+  rain_3accu<-apply(rain_d_m[[i]][,1:3],1,sum)
+  
+  #### 5일 누적 rain_d
+  rain_5accu<-apply(rain_d_m[[i]][,1:5],1,sum)
+  
+  #### 7일 누적 rain_d
+  rain_7accu<-apply(rain_d_m[[i]],1,sum)
+  
+  #### 3일 누적 minhumid
+  minhumid_3accu<-apply(minhumid_m[[i]][,c(1:3)],1,sum)
+  
+  #### 일주일 사이 습도 변화량
+  minhumid_7diff<-apply(minhumid_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+  
+  #### 3일 누적 avehumid
+  avehumid_3accu<-apply(avehumid_m[[i]][,c(1:3)],1,sum)
+  
+  #### 일주일 사이 습도의 변화량
+  avehumid_7diff<-apply(avehumid_m[[i]][,c(1:4)],1,function(x) x[2]-x[1])
+  
+  
+  wt_raw<-zoo(as.Date(data_list[[i]][,1]))
+  
+  wt_derive<-merge(wt_raw,mintemp_3accu,mintemp_7diff,maxtemp_3accu,maxtemp_7diff
+                   ,rain_3accu,rain_5accu,rain_7accu,minhumid_3accu,minhumid_7diff,
+                   avehumid_3accu,avehumid_7diff)
+  
+  wt_derive2<-wt_derive[-c(1,2,3,4,5,6,7),]
+  wt_derive3<-data.frame(coredata(wt_derive2))
+  
+  date<-data_list[[i]][,2][-c(1,2,3,4,5,6,7)]
+  
+  date_frame<-data.frame(date)
+  
+  join_weather[[i]]<-cbind(date_frame,wt_derive3)
+  
+}
+
+library(dplyr)
+data_tot<-list()
+
+for(i in 1:9)
+{data_tot[[i]]<-left_join(data_list[[i]],join_weather[[i]])}
